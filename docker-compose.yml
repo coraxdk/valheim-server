@@ -1,0 +1,12 @@
+services:
+  valheim:
+    build: .
+    container_name: valheim
+    restart: unless-stopped
+    ports:
+      - "2456-2458:2456-2458/udp"
+    environment:
+      - NAME=My Dedicated Valheim Server
+      - PASSWORD=verysecret
+    volumes:
+      - ./data:/data
