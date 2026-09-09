@@ -7,6 +7,8 @@ RUN sleep 5;./steamcmd.sh +force_install_dir /home/steam/valheim-dedicated \
 
 FROM ubuntu:latest
 LABEL maintainer="Dennis Nielsen <contact@coraxnet.dk>"
+LABEL org.opencontainers.image.source https://github.com/coraxdk/valheim-server
+
 ENV NAME="My Server"
 ENV PORT=2456
 ENV WORLD="Dedicated"
@@ -33,6 +35,7 @@ COPY --from=server /home/steam/steamcmd/linux64/steamclient.so /usr/lib
 
 WORKDIR /server
 COPY Docker/entrypoint.sh .
+RUN chmod +x entrypoint.sh
 ENTRYPOINT ["/server/entrypoint.sh"]
 
 EXPOSE 2456/udp
