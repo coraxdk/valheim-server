@@ -1,0 +1,86 @@
+name: Auto-Build Valheim Image
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Check every hour
+  workflow_dispatch: # Allows manual override
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: coraxdk/valheim-server
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Fetch Latest Valheim Build ID from Steam
+        id: steam
+        run: |
+          # Query SteamCMD API for Valheim Dedicated Server (AppID: 896660)
+          JSON=$(curl -s "https://api.steamcmd.net/v1/info/896660")
+          BUILD_ID=$(echo "$JSON" | jq -r '.data["896660"].depots.branches.public.buildid')
+          
+          if [ -z "$BUILD_ID" ] || [ "$BUILD_ID" = "null" ]; then
+            echo "Error: Could not fetch Build ID from Steam API"
+            exit 1
+          fi
+          
+          echo "Latest Steam Build ID: $BUILD_ID"
+          echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
+
+      - name: Check if Image Tag Exists in GHCR
+        id: registry-check
+        run: |
+          # Vi anmoder om et midlertidigt token til at læse pakke-metadata fra GHCR
+          TOKEN=$(echo -n "${{ secrets.GITHUB_TOKEN }}" | base64)
+          
+          # Henter listen over tags fra GitHub Packages API (konverteret til små bogstaver for sikkerhed)
+          LOWERCASE_IMAGE=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://${{ env.REGISTRY }}/v2/$LOWERCASE_IMAGE/manifests/${{ steps.steam.outputs.build_id }}")
+          
+          if [ "$STATUS_CODE" -eq 200 ]; then
+            echo "Tag ${{ steps.steam.outputs.build_id }} findes allerede i GHCR. Imaget er up-to-date."
+            echo "build_needed=false" >> $GITHUB_OUTPUT
+          else
+            echo "Tag ${{ steps.steam.outputs.build_id }} blev ikke fundet i GHCR. Ny opdatering på vej!"
+            echo "build_needed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        if: steps.registry-check.outputs.build_needed == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: steps.registry-check.outputs.build_needed == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} # Bruger det indbyggede automatiske token
+
+      - name: Build and Push Docker Image to GHCR
+        if: steps.registry-check.outputs.build_needed == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          # GitHub registrerer tags bedst i små bogstaver, så vi tvinger formatet her
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.steam.outputs.build_id }}
+          build-args: |
+            VALHEIM_BUILD_ID=${{ steps.steam.outputs.build_id }}
+          labels: |
+            org.opencontainers.image.title=Valheim Dedicated Server
+            org.opencontainers.image.version=${{ steps.steam.outputs.build_id }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          no-cache: true
