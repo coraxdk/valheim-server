@@ -75,11 +75,11 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.steam.outputs.build_id }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
           build-args: |
             VALHEIM_BUILD_ID=${{ steps.steam.outputs.build_id }}
           labels: |
             org.opencontainers.image.title=Valheim Dedicated Server
             org.opencontainers.image.version=${{ steps.steam.outputs.build_id }}
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           no-cache: true
