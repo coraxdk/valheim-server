@@ -38,13 +38,12 @@ jobs:
         id: registry-check
         run: |
           # Vi anmoder om et midlertidigt token til at læse pakke-metadata fra GHCR
-          TOKEN=$(echo -n "${{ secrets.GITHUB_TOKEN }}" | base64)
+          #TOKEN=$(echo -n "${{ secrets.REGISTRY_PASSWORD }}" | base64)
           
           # Henter listen over tags fra GitHub Packages API (konverteret til små bogstaver for sikkerhed)
-          LOWERCASE_IMAGE=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
           STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: Bearer $TOKEN" \
-            "https://${{ env.REGISTRY }}/v2/$LOWERCASE_IMAGE/manifests/${{ steps.steam.outputs.build_id }}")
+            -H "Authorization: Bearer ${{ secrets.REGISTRY_PASSWORD }}" \
+            "https://${{ env.REGISTRY }}/v2/${{ env.IMAGE_NAME }}/manifests/${{ steps.steam.outputs.build_id }}")
           
           if [ "$STATUS_CODE" -eq 200 ]; then
             echo "Tag ${{ steps.steam.outputs.build_id }} findes allerede i GHCR. Imaget er up-to-date."
@@ -56,15 +55,15 @@ jobs:
 
       - name: Set up Docker Buildx
         if: steps.registry-check.outputs.build_needed == 'true'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
         if: steps.registry-check.outputs.build_needed == 'true'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }} # Bruger det indbyggede automatiske token
+          registry: ghcr.io/coraxdk
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Build and Push Docker Image to GHCR
         if: steps.registry-check.outputs.build_needed == 'true'
