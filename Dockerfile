@@ -1,14 +1,16 @@
 FROM cm2network/steamcmd:latest AS server
 
-RUN sleep 5;./steamcmd.sh +force_install_dir /home/steam/valheim-dedicated \
+RUN ./steamcmd.sh +force_install_dir /home/steam/valheim-dedicated \
              +login anonymous \
              +app_update 896660 validate \
              +quit
 
 FROM ubuntu:latest
-LABEL maintainer="Dennis Nielsen <contact@coraxnet.dk>"
+LABEL maintainer "Dennis Nielsen <contact@coraxnet.dk>"
 LABEL org.opencontainers.image.source https://github.com/coraxdk/valheim-server
 
+ARG VALHEIM_BUILD_ID=unknown
+ENV VALHEIM_VERSION=${VALHEIM_BUILD_ID}
 ENV NAME="My Server"
 ENV PORT=2456
 ENV WORLD="Dedicated"
