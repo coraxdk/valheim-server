@@ -43,7 +43,7 @@ jobs:
           # Getting the tags list from GHCR for the image
           TAGS=$(curl -s -L -H "Authorization: Bearer $TOKEN" "https://ghcr.io/v2/coraxdk/valheim-server/tags/list")
           
-          if [ echo "$TAGS" | jq -e --arg TAG "${{ steps.steam.outputs.build_id }}" '.tags | index(${{ steps.steam.outputs.build_id }})' >/dev/null ]; then
+          if echo "$TAGS" | jq -e --arg TAG "${{ steps.steam.outputs.build_id }}" '.tags | index(${{ steps.steam.outputs.build_id }})' >/dev/null; then
             echo "Tag ${{ steps.steam.outputs.build_id }} already exists. The image is up-to-date."
             echo "build_needed=false" >> $GITHUB_OUTPUT
           else
