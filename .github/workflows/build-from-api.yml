@@ -12,9 +12,6 @@ env:
 jobs:
   check-and-build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
@@ -39,9 +36,11 @@ jobs:
         run: |
           # Requesting for a public token
           TOKEN=$(curl -s "https://ghcr.io/token?service=ghcr.io&scope=repository:coraxdk/valheim-server:pull" | jq -r .token)
+          echo "Token for GHCR: $TOKEN"
 
           # Getting the tags list from GHCR for the image
           TAGS=$(curl -s -L -H "Authorization: Bearer $TOKEN" "https://ghcr.io/v2/coraxdk/valheim-server/tags/list")
+          echo "Tags in GHCR: $TAGS"
           
           if echo "$TAGS" | jq -e --arg TAG "${{ steps.steam.outputs.build_id }}" '.tags | index(${{ steps.steam.outputs.build_id }})' >/dev/null; then
             echo "Tag ${{ steps.steam.outputs.build_id }} already exists. The image is up-to-date."
